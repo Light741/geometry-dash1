@@ -1,32 +1,732 @@
-<script>
-// Optimisation FPS
-let lastFrame = 0;
-function optimizedLoop(timestamp) {
-    if (!gameRunning) return;
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Geometry Dash - Niveau Fixe</title>
 
-    if (timestamp - lastFrame > 16) { // ~60 FPS
-        gameLoop();
-        lastFrame = timestamp;
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
     }
 
-    requestAnimationFrame(optimizedLoop);
+    canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    /* MENU */
+    #menu {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1a1a1a, #333);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        z-index: 10;
+    }
+
+    .menu-title {
+        font-size: 48px;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-shadow: 0 0 10px #00f0ff;
+    }
+
+    .menu-btn {
+        padding: 15px 40px;
+        font-size: 22px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #00c8ff;
+        color: white;
+        transition: 0.2s;
+    }
+
+    .menu-btn:hover {
+        transform: scale(1.1);
+        background: #00e1ff;
+    }
+
+    /* GAME OVER */
+    #gameOver {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        z-index: 20;
+    }
+
+    .gameover-title {
+        font-size: 48px;
+        color: white;
+        font-family: Arial, sans-serif;
+    }
+
+    .retry-btn {
+        padding: 15px 40px;
+        font-size: 22px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #ff4444;
+        color: white;
+        transition: 0.2s;
+    }
+
+    .retry-btn:hover {
+        transform: scale(1.1);
+        background: #ff6666;
+    }
+
+    /* PHASE DISPLAY */
+    #phaseDisplay {
+        position: absolute;
+        top: 20px;
+        width: 100%;
+        text-align: center;
+        font-size: 40px;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-shadow: 0 0 10px black;
+        display: none;
+        z-index: 30;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- MENU -->
+<div id="menu">
+    <div class="menu-title">Geometry Dash</div>
+    <button class="menu-btn" onclick="startGame()">Play</button>
+    <button class="menu-btn" onclick="toggleMusic()">Musique ON/OFF</button>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOver">
+    <div class="gameover-title">Game Over</div>
+    <button class="retry-btn" onclick="retryGame()">Retry</button>
+</div>
+
+<!-- PHASE DISPLAY -->
+<div id="phaseDisplay"></div>
+
+<!-- MUSIQUE -->
+<audio id="menuMusic" loop>
+    <source src="music.mp3" type="audio/mpeg">
+</audio>
+
+<canvas id="gameCanvas"></canvas>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Geometry Dash - Niveau Fixe</title>
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+    }
+
+    canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    /* MENU */
+    #menu {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1a1a1a, #333);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        z-index: 10;
+    }
+
+    .menu-title {
+        font-size: 48px;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-shadow: 0 0 10px #00f0ff;
+    }
+
+    .menu-btn {
+        padding: 15px 40px;
+        font-size: 22px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #00c8ff;
+        color: white;
+        transition: 0.2s;
+    }
+
+    .menu-btn:hover {
+        transform: scale(1.1);
+        background: #00e1ff;
+    }
+
+    /* GAME OVER */
+    #gameOver {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        z-index: 20;
+    }
+
+    .gameover-title {
+        font-size: 48px;
+        color: white;
+        font-family: Arial, sans-serif;
+    }
+
+    .retry-btn {
+        padding: 15px 40px;
+        font-size: 22px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #ff4444;
+        color: white;
+        transition: 0.2s;
+    }
+
+    .retry-btn:hover {
+        transform: scale(1.1);
+        background: #ff6666;
+    }
+
+    /* PHASE DISPLAY */
+    #phaseDisplay {
+        position: absolute;
+        top: 20px;
+        width: 100%;
+        text-align: center;
+        font-size: 40px;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-shadow: 0 0 10px black;
+        display: none;
+        z-index: 30;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- MENU -->
+<div id="menu">
+    <div class="menu-title">Geometry Dash</div>
+    <button class="menu-btn" onclick="startGame()">Play</button>
+    <button class="menu-btn" onclick="toggleMusic()">Musique ON/OFF</button>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOver">
+    <div class="gameover-title">Game Over</div>
+    <button class="retry-btn" onclick="retryGame()">Retry</button>
+</div>
+
+<!-- PHASE DISPLAY -->
+<div id="phaseDisplay"></div>
+
+<!-- MUSIQUE -->
+<audio id="menuMusic" loop>
+    <source src="music.mp3" type="audio/mpeg">
+</audio>
+
+<canvas id="gameCanvas"></canvas>
+<script>
+/* ============================
+   CANVAS PLEIN ÉCRAN
+   ============================ */
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+/* ============================
+   VARIABLES DU JEU
+   ============================ */
+let player = { x: 100, y: 300, size: 30, vy: 0, onGround: false };
+let gravity = 0.5;
+let obstacles = [];
+let platforms = [];
+let jumpPads = [];
+let particles = [];
+let gameRunning = false;
+let score = 0;
+let modeShip = false;
+let keys = {};
+
+let currentPhase = 0;
+let phaseShown = false;
+
+/* ============================
+   AFFICHAGE DES PHASES
+   ============================ */
+function showPhase(n) {
+    const div = document.getElementById("phaseDisplay");
+    div.innerText = "Phase " + n;
+    div.style.display = "block";
+
+    setTimeout(() => {
+        div.style.display = "none";
+    }, 2000);
 }
 
-// Lancement optimisé
-function startGame() {
-    document.getElementById("menu").style.display = "none";
-    gameRunning = true;
-    requestAnimationFrame(optimizedLoop);
+/* ============================
+   TOUCHES
+   ============================ */
+document.addEventListener("keydown", (e) => {
+    keys[e.key] = true;
+
+    if (!modeShip && e.key === " ") {
+        if (player.onGround) {
+            player.vy = -10;
+            player.onGround = false;
+        }
+    }
+
+    if (e.key === "s" || e.key === "S") modeShip = !modeShip;
+
+    if (e.key === "f" || e.key === "F") document.documentElement.requestFullscreen();
+});
+
+document.addEventListener("keyup", (e) => keys[e.key] = false);
+
+/* ============================
+   PARTICULES + PARALLAX
+   ============================ */
+function spawnParticles() {
+    for (let i = 0; i < 2; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 3 + 1,
+            speed: Math.random() * 1 + 0.5
+        });
+    }
 }
 
-// Retry optimisé
+function updateParticles() {
+    ctx.fillStyle = "white";
+    particles.forEach(p => {
+        p.y += p.speed;
+        if (p.y > canvas.height) p.y = 0;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+}
+
+/* ============================
+   SOL
+   ============================ */
+function drawGround() {
+    ctx.fillStyle = "#444";
+    ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+}
+
+/* ============================
+   PLATEFORMES
+   ============================ */
+function updatePlatforms() {
+    ctx.fillStyle = "white";
+    platforms.forEach((p) => {
+        ctx.fillRect(p.x - player.x + 100, p.y, p.width, p.height);
+
+        if (
+            player.x + player.size > p.x &&
+            player.x < p.x + p.width &&
+            player.y + player.size > p.y &&
+            player.y + player.size < p.y + p.height + 10 &&
+            player.vy >= 0
+        ) {
+            player.y = p.y - player.size;
+            player.vy = 0;
+            player.onGround = true;
+        }
+    });
+}
+
+/* ============================
+   OBSTACLES
+   ============================ */
+function updateObstacles() {
+    ctx.fillStyle = "red";
+    obstacles.forEach((o) => {
+        ctx.fillRect(o.x - player.x + 100, o.y, o.size, o.size);
+
+        if (
+            player.x < o.x + o.size &&
+            player.x + player.size > o.x &&
+            player.y < o.y + o.size &&
+            player.y + player.size > o.y
+        ) gameOver();
+    });
+}
+
+/* ============================
+   JUMP PADS
+   ============================ */
+function updateJumpPads() {
+    ctx.fillStyle = "#00ff00";
+    jumpPads.forEach((pad) => {
+        ctx.fillRect(pad.x - player.x + 100, pad.y, pad.width, pad.height);
+
+        if (
+            player.x + player.size > pad.x &&
+            player.x < pad.x + pad.width &&
+            player.y + player.size > pad.y &&
+            player.y + player.size < pad.y + pad.height + 10 &&
+            player.vy >= 0
+        ) {
+            player.vy = -18;
+            player.onGround = false;
+        }
+    });
+}
+
+/* ============================
+   JOUEUR
+   ============================ */
+function updatePlayer() {
+    player.x += 4;
+
+    if (modeShip) {
+        if (keys[" "]) player.vy -= 0.5;
+        else player.vy += 0.5;
+    } else {
+        player.vy += gravity;
+    }
+
+    player.y += player.vy;
+
+    if (!modeShip) {
+        const groundY = canvas.height - 100 - player.size;
+        if (player.y > groundY) {
+            player.y = groundY;
+            player.vy = 0;
+            player.onGround = true;
+        }
+    }
+
+    ctx.fillStyle = modeShip ? "cyan" : "yellow";
+    ctx.fillRect(100, player.y, player.size, player.size);
+}
+
+/* ============================
+   GAME LOOP
+   ============================ */
+function gameLoop() {
+    if (!gameRunning) return;
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    spawnParticles();
+    updateParticles();
+    drawGround();
+
+    updatePlatforms();
+    updateObstacles();
+    updateJumpPads();
+    updatePlayer();
+
+    runLevel(); // sera ajouté en PARTIE 3
+
+    score += 1;
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.fillText("Score : " + score, 20, 40);
+
+    requestAnimationFrame(gameLoop);
+}
+
+/* ============================
+   GAME OVER
+   ============================ */
+function gameOver() {
+    gameRunning = false;
+    document.getElementById("gameOver").style.display = "flex";
+}
+
+/* ============================
+   RETRY
+   ============================ */
 function retryGame() {
     player = { x: 100, y: 300, size: 30, vy: 0, onGround: false };
     obstacles = [];
     platforms = [];
+    jumpPads = [];
     particles = [];
+    score = 0;
+    levelIndex = 0;
+    currentPhase = 0;
+    phaseShown = false;
+
     document.getElementById("gameOver").style.display = "none";
     gameRunning = true;
-    requestAnimationFrame(optimizedLoop);
+    gameLoop();
+}
+
+/* ============================
+   START
+   ============================ */
+function startGame() {
+    document.getElementById("menu").style.display = "none";
+    gameRunning = true;
+    gameLoop();
+}
+
+/* ============================
+   MUSIQUE
+   ============================ */
+let musicEnabled = false;
+function toggleMusic() {
+    const m = document.getElementById("menuMusic");
+    musicEnabled = !musicEnabled;
+    if (musicEnabled) m.play();
+    else m.pause();
+}
+</script>
+<script>
+/* ============================
+   NIVEAU FIXE — 1 MINUTE
+   STYLE STEREO MADNESS
+   ============================ */
+
+let levelData = [];
+let levelIndex = 0;
+let levelStarted = false;
+
+/* ============================
+   LECTURE DU NIVEAU
+   ============================ */
+function runLevel() {
+    if (!levelStarted) {
+        buildLevel();
+        levelStarted = true;
+    }
+
+    if (levelIndex >= levelData.length) return;
+
+    while (levelIndex < levelData.length && player.x + 800 >= levelData[levelIndex].x) {
+        const obj = levelData[levelIndex];
+
+        /* PHASE DISPLAY */
+        if (obj.type === "phase") {
+            currentPhase = obj.number;
+            showPhase(currentPhase);
+        }
+
+        /* OBSTACLE */
+        if (obj.type === "obstacle") {
+            obstacles.push({
+                x: obj.x,
+                y: obj.y,
+                size: 40
+            });
+        }
+
+        /* PAD */
+        if (obj.type === "pad") {
+            jumpPads.push({
+                x: obj.x,
+                y: obj.y,
+                width: 40,
+                height: 10
+            });
+        }
+
+        /* PLATFORM */
+        if (obj.type === "platform") {
+            platforms.push({
+                x: obj.x,
+                y: obj.y,
+                width: obj.width,
+                height: obj.height
+            });
+        }
+
+        /* SHIP START */
+        if (obj.type === "shipStart") {
+            modeShip = true;
+            player.vy = 0;
+        }
+
+        /* SHIP END */
+        if (obj.type === "shipEnd") {
+            modeShip = false;
+            player.vy = 0;
+        }
+
+        levelIndex++;
+    }
+}
+
+/* ============================
+   CONSTRUCTION DU NIVEAU
+   ============================ */
+function buildLevel() {
+    let x = 500; // départ après sol plat
+    const U = 150; // unité de distance
+
+    /* ============================
+       PHASE 1 — SAUTS SIMPLES
+       ============================ */
+    levelData.push({ type: "phase", number: 1, x: x });
+
+    for (let i = 0; i < 6; i++) {
+        levelData.push({ type: "obstacle", x: x, y: canvas.height - 130 });
+        x += U * 2;
+    }
+
+    /* ============================
+       PHASE 2 — DOUBLES / TRIPLES
+       ============================ */
+    levelData.push({ type: "phase", number: 2, x: x });
+
+    for (let i = 0; i < 3; i++) {
+        levelData.push({ type: "obstacle", x: x, y: canvas.height - 130 });
+        levelData.push({ type: "obstacle", x: x + U, y: canvas.height - 130 });
+        x += U * 3;
+    }
+
+    // triple saut
+    levelData.push({ type: "obstacle", x: x, y: canvas.height - 130 });
+    levelData.push({ type: "obstacle", x: x + U, y: canvas.height - 130 });
+    levelData.push({ type: "obstacle", x: x + U * 2, y: canvas.height - 130 });
+    x += U * 4;
+
+    /* ============================
+       PHASE 3 — PLATEFORMES + PADS
+       ============================ */
+    levelData.push({ type: "phase", number: 3, x: x });
+
+    for (let i = 0; i < 3; i++) {
+        levelData.push({ type: "pad", x: x, y: canvas.height - 120 });
+
+        levelData.push({
+            type: "platform",
+            x: x + U,
+            y: canvas.height - 200,
+            width: 140,
+            height: 20
+        });
+
+        levelData.push({
+            type: "obstacle",
+            x: x + U + 200,
+            y: canvas.height - 230
+        });
+
+        x += U * 3;
+    }
+
+    /* ============================
+       PHASE 4 — MODE SHIP
+       ============================ */
+    levelData.push({ type: "phase", number: 4, x: x });
+
+    levelData.push({ type: "shipStart", x: x });
+    x += U;
+
+    // tunnel large → moyen → serré
+    for (let i = 0; i < 10; i++) {
+        levelData.push({
+            type: "platform",
+            x: x,
+            y: canvas.height - (150 + i * 5),
+            width: 200,
+            height: 20
+        });
+        x += U;
+    }
+
+    for (let i = 0; i < 10; i++) {
+        levelData.push({
+            type: "platform",
+            x: x,
+            y: canvas.height - (200 + i * 3),
+            width: 200,
+            height: 20
+        });
+        x += U;
+    }
+
+    levelData.push({ type: "shipEnd", x: x });
+    x += U * 2;
+
+    /* ============================
+       PHASE 5 — PETITS SAUTS
+       ============================ */
+    levelData.push({ type: "phase", number: 5, x: x });
+
+    for (let i = 0; i < 12; i++) {
+        levelData.push({ type: "obstacle", x: x, y: canvas.height - 130 });
+        x += U;
+    }
+
+    /* ============================
+       PHASE 6 — FINAL
+       ============================ */
+    levelData.push({ type: "phase", number: 6, x: x });
+
+    for (let i = 0; i < 4; i++) {
+        levelData.push({
+            type: "platform",
+            x: x,
+            y: canvas.height - 200,
+            width: 140,
+            height: 20
+        });
+
+        levelData.push({
+            type: "obstacle",
+            x: x + U,
+            y: canvas.height - 230
+        });
+
+        x += U * 2;
+    }
 }
 </script>
