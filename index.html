@@ -1,251 +1,32 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Geometry Dash</title>
-
-<style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: black;
-    }
-
-    canvas {
-        background: black;
-        display: block;
-        margin: 0 auto;
-    }
-
-    /* --- MENU --- */
-    #menu {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #1a1a1a, #333);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 20px;
-        z-index: 10;
-    }
-
-    .menu-title {
-        font-size: 48px;
-        color: white;
-        font-family: Arial, sans-serif;
-        text-shadow: 0 0 10px #00f0ff;
-    }
-
-    .menu-btn {
-        padding: 15px 40px;
-        font-size: 22px;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        background: #00c8ff;
-        color: white;
-        transition: 0.2s;
-    }
-
-    .menu-btn:hover {
-        transform: scale(1.1);
-        background: #00e1ff;
-    }
-
-    /* --- GAME OVER --- */
-    #gameOver {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        display: none;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 20px;
-        z-index: 20;
-    }
-
-    .gameover-title {
-        font-size: 48px;
-        color: white;
-        font-family: Arial, sans-serif;
-    }
-
-    .retry-btn {
-        padding: 15px 40px;
-        font-size: 22px;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        background: #ff4444;
-        color: white;
-        transition: 0.2s;
-    }
-
-    .retry-btn:hover {
-        transform: scale(1.1);
-        background: #ff6666;
-    }
-</style>
-</head>
-
-<body>
-
-<!-- MENU -->
-<div id="menu">
-    <div class="menu-title">Geometry Dash</div>
-    <button class="menu-btn" onclick="startGame()">Play</button>
-    <button class="menu-btn" onclick="toggleMusic()">Musique ON/OFF</button>
-</div>
-
-<!-- GAME OVER -->
-<div id="gameOver">
-    <div class="gameover-title">Game Over</div>
-    <button class="retry-btn" onclick="retryGame()">Retry</button>
-</div>
-
-<!-- MUSIQUE -->
-<audio id="menuMusic" loop>
-    <source src="music.mp3" type="audio/mpeg">
-</audio>
-
-<canvas id="gameCanvas" width="800" height="400"></canvas>
-
 <script>
-/* --- MENU SCRIPT --- */
-let menu = document.getElementById("menu");
-let gameOverScreen = document.getElementById("gameOver");
-let menuMusic = document.getElementById("menuMusic");
-let musicEnabled = true;
-
-function startGame() {
-    menu.style.display = "none";
-    menuMusic.pause();
-    gameRunning = true;
-    update();
-}
-
-function toggleMusic() {
-    if (musicEnabled) {
-        menuMusic.pause();
-        musicEnabled = false;
-    } else {
-        menuMusic.play();
-        musicEnabled = true;
-    }
-}
-
-window.onload = () => {
-    menuMusic.volume = 0.5;
-    menuMusic.play();
-};
-
-/* --- JEU --- */
-let canvas = document.getElementById("gameCanvas");
-let ctx = canvas.getContext("2d");
-
-let player = {
-    x: 50,
-    y: 300,
-    width: 30,
-    height: 30,
-    dy: 0,
-    gravity: 0.6,
-    jumpPower: -12,
-    onGround: true
-};
-
-let obstacles = [];
-let gameRunning = false;
-
-function spawnObstacle() {
-    obstacles.push({
-        x: 800,
-        y: 330,
-        width: 30,
-        height: 30
-    });
-}
-
-setInterval(spawnObstacle, 1500);
-
-function endGame() {
-    gameRunning = false;
-    gameOverScreen.style.display = "flex";
-}
-
-function retryGame() {
-    player.x = 50;
-    player.y = 300;
-    player.dy = 0;
-    player.onGround = true;
-
-    obstacles = [];
-
-    gameOverScreen.style.display = "none";
-
-    gameRunning = true;
-    update();
-}
-
-function update() {
+// Optimisation FPS
+let lastFrame = 0;
+function optimizedLoop(timestamp) {
     if (!gameRunning) return;
 
-    player.dy += player.gravity;
-    player.y += player.dy;
-
-    if (player.y + player.height >= 360) {
-        player.y = 360 - player.height;
-        player.dy = 0;
-        player.onGround = true;
+    if (timestamp - lastFrame > 16) { // ~60 FPS
+        gameLoop();
+        lastFrame = timestamp;
     }
 
-    obstacles.forEach(o => {
-        o.x -= 5;
-
-        // COLLISION
-        if (
-            player.x < o.x + o.width &&
-            player.x + player.width > o.x &&
-            player.y < o.y + o.height &&
-            player.y + player.height > o.y
-        ) {
-            endGame();
-        }
-    });
-
-    obstacles = obstacles.filter(o => o.x + o.width > 0);
-
-    draw();
-    requestAnimationFrame(update);
+    requestAnimationFrame(optimizedLoop);
 }
 
-function draw() {
-    ctx.clearRect(0, 0, 800, 400);
-
-    ctx.fillStyle = "white";
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-
-    ctx.fillStyle = "red";
-    obstacles.forEach(o => {
-        ctx.fillRect(o.x, o.y, o.width, o.height);
-    });
+// Lancement optimisé
+function startGame() {
+    document.getElementById("menu").style.display = "none";
+    gameRunning = true;
+    requestAnimationFrame(optimizedLoop);
 }
 
-document.addEventListener("keydown", () => {
-    if (player.onGround && gameRunning) {
-        player.dy = player.jumpPower;
-        player.onGround = false;
-    }
-});
+// Retry optimisé
+function retryGame() {
+    player = { x: 100, y: 300, size: 30, vy: 0, onGround: false };
+    obstacles = [];
+    platforms = [];
+    particles = [];
+    document.getElementById("gameOver").style.display = "none";
+    gameRunning = true;
+    requestAnimationFrame(optimizedLoop);
+}
 </script>
-
-</body>
-</html>
